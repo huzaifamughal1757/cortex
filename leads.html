@@ -2,86 +2,128 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Leads Dashboard</title>
 <style>
   :root {
     --bg: #0f1115;
     --panel: #171a21;
+    --panel-2: #1d212b;
     --border: #262b36;
     --text: #e6e8ec;
     --muted: #8a90a2;
     --accent: #5b8cff;
+    --accent-dim: #2b3550;
     --good: #3ddc97;
     --warn: #ffb454;
     --bad: #ff6b6b;
+    --radius: 8px;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
-    padding: 24px;
+    padding: 20px;
   }
-  h1 { margin: 0 0 4px; font-size: 22px; }
+  @media (min-width: 720px) { body { padding: 28px 32px; } }
+
+  .header-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  h1 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
   .sub { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
+  .count-pill {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
 
   .toolbar {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
   .toolbar input, .toolbar select {
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 8px 10px;
+    padding: 9px 10px;
     border-radius: 6px;
     font-size: 13px;
   }
-  .toolbar input { flex: 1; min-width: 200px; }
+  .toolbar input:focus, .toolbar select:focus, button:focus-visible, .page-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .toolbar input#search { flex: 1 1 240px; min-width: 200px; }
+  .toolbar select { min-width: 140px; }
   button {
     background: var(--accent);
     border: none;
     color: #fff;
-    padding: 8px 14px;
+    padding: 9px 14px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 13px;
+    white-space: nowrap;
   }
   button:hover { opacity: .9; }
+  button.secondary {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
 
-  .status { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .status { color: var(--muted); font-size: 13px; margin-bottom: 10px; min-height: 18px; }
   .status.error { color: var(--bad); }
 
+  /* ---------- Table (desktop) ---------- */
+  .table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
     font-size: 13px;
+    min-width: 920px;
   }
   thead th {
     text-align: left;
     padding: 10px 12px;
-    background: #1d212b;
+    background: var(--panel-2);
     border-bottom: 1px solid var(--border);
     color: var(--muted);
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
+    position: sticky;
+    top: 0;
   }
   thead th:hover { color: var(--text); }
+  thead th .arrow { color: var(--accent); margin-left: 4px; }
   tbody td {
     padding: 10px 12px;
     border-bottom: 1px solid var(--border);
     vertical-align: top;
   }
-  tbody tr:hover { background: #1c202a; }
+  tbody tr:hover { background: #1c202a; cursor: pointer; }
   tbody tr:last-child td { border-bottom: none; }
 
   .badge {
@@ -92,70 +134,239 @@
     font-weight: 600;
     text-transform: capitalize;
   }
-  .badge.lead { background: #2b3550; color: #9db4ff; }
+  .badge.lead { background: var(--accent-dim); color: #9db4ff; }
   .badge.qualified { background: #1e3a2f; color: var(--good); }
   .badge.contacted { background: #3a3120; color: var(--warn); }
   .badge.disqualified { background: #3a2222; color: var(--bad); }
   .badge.default { background: #2a2e38; color: var(--muted); }
 
-  .score {
-    font-weight: 700;
-  }
+  .score { font-weight: 700; }
   .score.high { color: var(--good); }
   .score.mid { color: var(--warn); }
   .score.low { color: var(--muted); }
 
-  .tags span {
+  .tags span, .chip {
     display: inline-block;
     background: #232838;
     color: #a9b3cc;
     border-radius: 4px;
     padding: 2px 6px;
-    margin: 2px 4px 0 0;
+    margin: 2px 4px 2px 0;
     font-size: 11px;
   }
 
   .muted { color: var(--muted); }
   .empty { text-align: center; padding: 40px; color: var(--muted); }
-
   a.link { color: var(--accent); text-decoration: none; }
   a.link:hover { text-decoration: underline; }
+
+  .view-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 4px 9px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  .view-btn:hover { background: var(--accent-dim); opacity: 1; }
+
+  /* ---------- Card layout (mobile) ---------- */
+  .cards { display: none; flex-direction: column; gap: 10px; }
+  .lead-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .lead-card .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .lead-card .name { font-weight: 700; font-size: 14px; }
+  .lead-card .company { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .lead-card .field-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12.5px;
+    padding: 5px 0;
+    border-top: 1px dashed var(--border);
+  }
+  .lead-card .field-row .k { color: var(--muted); flex-shrink: 0; }
+  .lead-card .field-row .v { text-align: right; overflow-wrap: anywhere; }
+  .lead-card .card-actions { margin-top: 10px; text-align: right; }
+
+  @media (max-width: 800px) {
+    .table-wrap { display: none; }
+    .cards { display: flex; }
+  }
+
+  /* ---------- Pagination ---------- */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .page-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .page-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    min-width: 34px;
+  }
+  .page-btn:hover { border-color: var(--accent); }
+  .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .page-size { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+
+  /* ---------- Modal (full record detail) ---------- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 6, 9, 0.65);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-width: 720px;
+    width: 100%;
+    max-height: 86vh;
+    overflow-y: auto;
+    padding: 22px 24px;
+  }
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+  .modal-head h2 { margin: 0 0 4px; font-size: 18px; }
+  .modal-head .company { color: var(--muted); font-size: 13px; }
+  .modal-close {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 30px; height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+  }
+  @media (max-width: 560px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-grid .full { grid-column: 1 / -1; }
+  .detail-item .k {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .detail-item .v { font-size: 13.5px; line-height: 1.5; overflow-wrap: anywhere; }
+  .detail-item .v.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+  }
 </style>
 </head>
 <body>
 
-<h1>Leads</h1>
+<div class="header-row">
+  <h1>Leads</h1>
+  <span class="count-pill" id="countPill">—</span>
+</div>
 <div class="sub">Live data from your Neon <code>leads</code> table</div>
 
 <div class="toolbar">
-  <input id="search" type="text" placeholder="Search name, company, email, city..." />
+  <input id="search" type="text" placeholder="Search name, company, email, phone, city, industry, tags, notes..." />
   <select id="statusFilter">
     <option value="">All statuses</option>
   </select>
-  <button id="refreshBtn">Refresh</button>
+  <button id="refreshBtn" class="secondary">Refresh</button>
 </div>
 
 <div id="status" class="status">Connecting...</div>
 
-<table>
-  <thead>
-    <tr>
-      <th data-key="name">Name</th>
-      <th data-key="company_name">Company</th>
-      <th data-key="email">Email</th>
-      <th data-key="phone">Phone</th>
-      <th data-key="industry">Industry</th>
-      <th data-key="city">Location</th>
-      <th data-key="lead_score">Score</th>
-      <th data-key="status">Status</th>
-      <th data-key="tags">Tags</th>
-      <th data-key="created_at">Created</th>
-    </tr>
-  </thead>
-  <tbody id="tbody">
-    <tr><td colspan="10" class="empty">Loading...</td></tr>
-  </tbody>
-</table>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th data-key="name">Name</th>
+        <th data-key="company_name">Company</th>
+        <th data-key="email">Email</th>
+        <th data-key="phone">Phone</th>
+        <th data-key="industry">Industry</th>
+        <th data-key="city">Location</th>
+        <th data-key="employee_count">Employees</th>
+        <th data-key="lead_score">Score</th>
+        <th data-key="status">Status</th>
+        <th data-key="tags">Tags</th>
+        <th data-key="created_at">Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="12" class="empty">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="cards" id="cards"></div>
+
+<div class="pagination" id="pagination" style="display:none;">
+  <div class="page-size">
+    Rows per page:
+    <select id="pageSize">
+      <option value="25">25</option>
+      <option value="50" selected>50</option>
+      <option value="100">100</option>
+      <option value="250">250</option>
+      <option value="all">All</option>
+    </select>
+  </div>
+  <div class="page-controls" id="pageControls"></div>
+</div>
+
+<!-- Full-record detail modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <div>
+        <h2 id="modalTitle">—</h2>
+        <div class="company" id="modalCompany"></div>
+      </div>
+      <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+    </div>
+    <div class="detail-grid" id="modalBody"></div>
+  </div>
+</div>
 
 <!--
   =========================================================================
@@ -186,14 +397,34 @@
   const sql = neon(DATABASE_URL);
 
   const tbody = document.getElementById('tbody');
+  const cardsEl = document.getElementById('cards');
   const statusEl = document.getElementById('status');
+  const countPill = document.getElementById('countPill');
   const searchInput = document.getElementById('search');
   const statusFilter = document.getElementById('statusFilter');
   const refreshBtn = document.getElementById('refreshBtn');
+  const pageSizeSel = document.getElementById('pageSize');
+  const paginationEl = document.getElementById('pagination');
+  const pageControls = document.getElementById('pageControls');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalClose = document.getElementById('modalClose');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalCompany = document.getElementById('modalCompany');
+  const modalBody = document.getElementById('modalBody');
 
   let allLeads = [];
+  let filteredLeads = [];
   let sortKey = 'created_at';
   let sortDir = 'desc';
+  let currentPage = 1;
+  let pageSize = 50;
+  let leadsById = new Map();
+
+  const SEARCH_FIELDS = [
+    'name', 'company_name', 'email', 'phone', 'industry', 'city', 'country',
+    'website', 'linkedin', 'source', 'assigned_to', 'notes', 'pain_points',
+    'recommended_services', 'outreach_angle', 'disqualified_reason'
+  ];
 
   function setStatus(msg, isError = false) {
     statusEl.textContent = msg;
@@ -211,10 +442,13 @@
     return 'low';
   }
 
-  function fmtDate(d) {
+  function fmtDate(d, withTime = false) {
     if (!d) return '<span class="muted">—</span>';
     const date = new Date(d);
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    const opts = withTime
+      ? { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+      : { year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString(undefined, opts);
   }
 
   function esc(str) {
@@ -224,36 +458,199 @@
     }[c]));
   }
 
-  function render(rows) {
+  function arrayChips(arr) {
+    if (!arr || !arr.length) return '<span class="muted">—</span>';
+    return arr.map(t => `<span class="chip">${esc(t)}</span>`).join('');
+  }
+
+  function textBlock(val) {
+    if (!val) return '<span class="muted">—</span>';
+    return esc(val).replace(/\n/g, '<br>');
+  }
+
+  function linkOrDash(url, label) {
+    if (!url) return '<span class="muted">—</span>';
+    const href = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+    return `<a class="link" href="${esc(href)}" target="_blank" rel="noopener">${esc(label || url)}</a>`;
+  }
+
+  /* ---------------- Rendering: table rows ---------------- */
+  function renderTable(rows) {
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty">No leads found</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" class="empty">No leads found</td></tr>';
       return;
     }
-
     tbody.innerHTML = rows.map(r => `
-      <tr>
+      <tr data-id="${esc(r.id)}">
         <td>${esc(r.name) || '<span class="muted">—</span>'}</td>
         <td>${esc(r.company_name) || '<span class="muted">—</span>'}</td>
         <td>${r.email ? `<a class="link" href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : '<span class="muted">—</span>'}</td>
         <td>${esc(r.phone) || '<span class="muted">—</span>'}</td>
         <td>${esc(r.industry) || '<span class="muted">—</span>'}</td>
         <td>${[r.city, r.country].filter(Boolean).map(esc).join(', ') || '<span class="muted">—</span>'}</td>
+        <td>${r.employee_count ?? '<span class="muted">—</span>'}</td>
         <td><span class="score ${scoreClass(r.lead_score || 0)}">${r.lead_score ?? 0}</span></td>
         <td><span class="badge ${badgeClass(r.status)}">${esc(r.status) || 'lead'}</span></td>
-        <td class="tags">${(r.tags || []).map(t => `<span>${esc(t)}</span>`).join('') || '<span class="muted">—</span>'}</td>
+        <td class="tags">${(r.tags || []).slice(0, 3).map(t => `<span>${esc(t)}</span>`).join('') || '<span class="muted">—</span>'}${(r.tags && r.tags.length > 3) ? `<span class="muted"> +${r.tags.length - 3}</span>` : ''}</td>
         <td>${fmtDate(r.created_at)}</td>
+        <td><button class="view-btn" data-id="${esc(r.id)}">View</button></td>
       </tr>
     `).join('');
   }
 
-  function applyFilters() {
+  /* ---------------- Rendering: mobile cards ---------------- */
+  function renderCards(rows) {
+    if (!rows.length) {
+      cardsEl.innerHTML = '<div class="empty">No leads found</div>';
+      return;
+    }
+    cardsEl.innerHTML = rows.map(r => `
+      <div class="lead-card" data-id="${esc(r.id)}">
+        <div class="card-top">
+          <div>
+            <div class="name">${esc(r.name) || '—'}</div>
+            <div class="company">${esc(r.company_name) || '—'}</div>
+          </div>
+          <span class="badge ${badgeClass(r.status)}">${esc(r.status) || 'lead'}</span>
+        </div>
+        <div class="field-row"><span class="k">Score</span><span class="v score ${scoreClass(r.lead_score || 0)}">${r.lead_score ?? 0}</span></div>
+        <div class="field-row"><span class="k">Email</span><span class="v">${esc(r.email) || '—'}</span></div>
+        <div class="field-row"><span class="k">Phone</span><span class="v">${esc(r.phone) || '—'}</span></div>
+        <div class="field-row"><span class="k">Industry</span><span class="v">${esc(r.industry) || '—'}</span></div>
+        <div class="field-row"><span class="k">Location</span><span class="v">${[r.city, r.country].filter(Boolean).map(esc).join(', ') || '—'}</span></div>
+        <div class="field-row"><span class="k">Created</span><span class="v">${fmtDate(r.created_at)}</span></div>
+        <div class="card-actions"><button class="view-btn" data-id="${esc(r.id)}">View full record</button></div>
+      </div>
+    `).join('');
+  }
+
+  /* ---------------- Modal: full record ---------------- */
+  function openModal(id) {
+    const r = leadsById.get(id);
+    if (!r) return;
+    modalTitle.textContent = r.name || 'Unnamed lead';
+    modalCompany.textContent = r.company_name || '';
+
+    const items = [
+      ['Status', `<span class="badge ${badgeClass(r.status)}">${esc(r.status) || 'lead'}</span>`],
+      ['Lead score', `<span class="score ${scoreClass(r.lead_score || 0)}">${r.lead_score ?? 0}</span>`],
+      ['Email', r.email ? `<a class="link" href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : '<span class="muted">—</span>'],
+      ['Phone', esc(r.phone) || '<span class="muted">—</span>'],
+      ['Website', linkOrDash(r.website)],
+      ['LinkedIn', linkOrDash(r.linkedin, 'View profile')],
+      ['Industry', esc(r.industry) || '<span class="muted">—</span>'],
+      ['Employees', r.employee_count ?? '<span class="muted">—</span>'],
+      ['Revenue estimate', esc(r.revenue_estimate) || '<span class="muted">—</span>'],
+      ['Location', [r.city, r.country].filter(Boolean).map(esc).join(', ') || '<span class="muted">—</span>'],
+      ['Source', esc(r.source) || '<span class="muted">—</span>'],
+      ['Assigned to', esc(r.assigned_to) || '<span class="muted">—</span>'],
+      ['Created', fmtDate(r.created_at, true)],
+      ['Updated', fmtDate(r.updated_at, true)],
+      ['Last contacted', fmtDate(r.last_contacted_at, true)],
+      ['Next follow-up', fmtDate(r.next_followup_at, true)],
+    ];
+
+    const fullWidthItems = [
+      ['Technologies', arrayChips(r.technologies)],
+      ['Tags', arrayChips(r.tags)],
+      ['Pain points', textBlock(r.pain_points)],
+      ['Recommended services', textBlock(r.recommended_services)],
+      ['Outreach angle', textBlock(r.outreach_angle)],
+      ['Notes', textBlock(r.notes)],
+    ];
+    if (r.status && r.status.toLowerCase() === 'disqualified') {
+      fullWidthItems.push(['Disqualified reason', textBlock(r.disqualified_reason)]);
+    }
+
+    modalBody.innerHTML =
+      items.map(([k, v]) => `<div class="detail-item"><div class="k">${esc(k)}</div><div class="v">${v}</div></div>`).join('') +
+      fullWidthItems.map(([k, v]) => `<div class="detail-item full"><div class="k">${esc(k)}</div><div class="v">${v}</div></div>`).join('') +
+      `<div class="detail-item full"><div class="k">Record ID</div><div class="v mono">${esc(r.id)}</div></div>`;
+
+    modalOverlay.classList.add('open');
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('open');
+  }
+
+  modalClose.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  tbody.addEventListener('click', (e) => {
+    const btn = e.target.closest('.view-btn');
+    const row = e.target.closest('tr[data-id]');
+    const id = btn ? btn.dataset.id : (row ? row.dataset.id : null);
+    if (id) openModal(id);
+  });
+  cardsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.view-btn');
+    const card = e.target.closest('.lead-card[data-id]');
+    const id = btn ? btn.dataset.id : (card ? card.dataset.id : null);
+    if (id) openModal(id);
+  });
+
+  /* ---------------- Pagination ---------------- */
+  function renderPagination(totalRows) {
+    if (pageSize === 'all' || totalRows <= parseInt(pageSizeSel.value, 10)) {
+      // still show control bar if "all" selectable, but hide page buttons when everything fits
+    }
+    const size = pageSize === 'all' ? totalRows : pageSize;
+    const totalPages = Math.max(1, Math.ceil(totalRows / (size || 1)));
+    currentPage = Math.min(currentPage, totalPages);
+
+    paginationEl.style.display = totalRows > 0 ? 'flex' : 'none';
+
+    if (pageSize === 'all' || totalPages <= 1) {
+      pageControls.innerHTML = `<span class="muted" style="font-size:12.5px;">Page 1 of ${totalPages}</span>`;
+      return;
+    }
+
+    let html = '';
+    html += `<button class="page-btn" id="prevPage" ${currentPage === 1 ? 'disabled' : ''} aria-label="Previous page">‹</button>`;
+
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+
+    if (start > 1) {
+      html += `<button class="page-btn" data-page="1">1</button>`;
+      if (start > 2) html += `<span class="muted">…</span>`;
+    }
+    for (let p = start; p <= end; p++) {
+      html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
+    }
+    if (end < totalPages) {
+      if (end < totalPages - 1) html += `<span class="muted">…</span>`;
+      html += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    html += `<button class="page-btn" id="nextPage" ${currentPage === totalPages ? 'disabled' : ''} aria-label="Next page">›</button>`;
+    pageControls.innerHTML = html;
+
+    document.getElementById('prevPage')?.addEventListener('click', () => { currentPage--; applyFilters(false); });
+    document.getElementById('nextPage')?.addEventListener('click', () => { currentPage++; applyFilters(false); });
+    pageControls.querySelectorAll('[data-page]').forEach(btn => {
+      btn.addEventListener('click', () => { currentPage = parseInt(btn.dataset.page, 10); applyFilters(false); });
+    });
+  }
+
+  /* ---------------- Filter + sort + paginate pipeline ---------------- */
+  function applyFilters(resetPage = true) {
     const q = searchInput.value.trim().toLowerCase();
     const statusVal = statusFilter.value;
 
+    if (resetPage) currentPage = 1;
+
     let rows = allLeads.filter(r => {
-      const matchesQuery = !q || [r.name, r.company_name, r.email, r.city, r.industry]
+      const matchesQuery = !q || SEARCH_FIELDS
+        .map(f => r[f])
         .filter(Boolean)
-        .some(f => String(f).toLowerCase().includes(q));
+        .some(f => String(f).toLowerCase().includes(q))
+        || (r.tags || []).some(t => t.toLowerCase().includes(q))
+        || (r.technologies || []).some(t => t.toLowerCase().includes(q));
       const matchesStatus = !statusVal || r.status === statusVal;
       return matchesQuery && matchesStatus;
     });
@@ -262,6 +659,8 @@
       let av = a[sortKey], bv = b[sortKey];
       if (av === null || av === undefined) av = '';
       if (bv === null || bv === undefined) bv = '';
+      if (Array.isArray(av)) av = av.join(', ');
+      if (Array.isArray(bv)) bv = bv.join(', ');
       if (typeof av === 'string') av = av.toLowerCase();
       if (typeof bv === 'string') bv = bv.toLowerCase();
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
@@ -269,37 +668,57 @@
       return 0;
     });
 
-    render(rows);
-    setStatus(`Showing ${rows.length} of ${allLeads.length} leads`);
+    filteredLeads = rows;
+
+    const size = pageSize === 'all' ? rows.length : pageSize;
+    const startIdx = (currentPage - 1) * (size || 1);
+    const pageRows = pageSize === 'all' ? rows : rows.slice(startIdx, startIdx + size);
+
+    renderTable(pageRows);
+    renderCards(pageRows);
+    renderPagination(rows.length);
+
+    const rangeText = rows.length === 0
+      ? '0 leads'
+      : `${startIdx + 1}–${Math.min(startIdx + pageRows.length, rows.length)} of ${rows.length} leads`;
+    setStatus(`Showing ${rangeText}${allLeads.length !== rows.length ? ` (filtered from ${allLeads.length})` : ''}`);
   }
 
+  /* ---------------- Data load ---------------- */
   async function loadLeads() {
     setStatus('Loading leads...');
-    tbody.innerHTML = '<tr><td colspan="10" class="empty">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty">Loading...</td></tr>';
+    cardsEl.innerHTML = '<div class="empty">Loading...</div>';
     try {
       const rows = await sql`
-        SELECT id, name, company_name, email, phone, industry, city, country,
-               lead_score, status, tags, created_at
+        SELECT id, name, company_name, company_id, website, industry, email, phone,
+               linkedin, country, city, employee_count, revenue_estimate, technologies,
+               source, lead_score, status, tags, notes, assigned_to, pain_points,
+               recommended_services, outreach_angle, created_at, updated_at,
+               last_contacted_at, next_followup_at, disqualified_reason
         FROM leads
         ORDER BY created_at DESC
-        LIMIT 500
       `;
       allLeads = rows;
+      leadsById = new Map(rows.map(r => [String(r.id), r]));
+      countPill.textContent = `${rows.length} total`;
 
-      // Populate status filter options dynamically
-      const statuses = [...new Set(rows.map(r => r.status).filter(Boolean))];
+      const statuses = [...new Set(rows.map(r => r.status).filter(Boolean))].sort();
+      const prevStatus = statusFilter.value;
       statusFilter.innerHTML = '<option value="">All statuses</option>' +
         statuses.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+      if (statuses.includes(prevStatus)) statusFilter.value = prevStatus;
 
-      applyFilters();
+      applyFilters(true);
     } catch (err) {
       console.error(err);
       setStatus('Failed to load leads: ' + err.message, true);
-      tbody.innerHTML = '<tr><td colspan="10" class="empty">Error loading data — check console</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" class="empty">Error loading data — check console</td></tr>';
+      cardsEl.innerHTML = '<div class="empty">Error loading data — check console</div>';
     }
   }
 
-  document.querySelectorAll('thead th').forEach(th => {
+  document.querySelectorAll('thead th[data-key]').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
       if (sortKey === key) {
@@ -308,13 +727,23 @@
         sortKey = key;
         sortDir = 'asc';
       }
-      applyFilters();
+      document.querySelectorAll('thead th[data-key] .arrow').forEach(a => a.remove());
+      const arrow = document.createElement('span');
+      arrow.className = 'arrow';
+      arrow.textContent = sortDir === 'asc' ? '▲' : '▼';
+      th.appendChild(arrow);
+      applyFilters(true);
     });
   });
 
-  searchInput.addEventListener('input', applyFilters);
-  statusFilter.addEventListener('change', applyFilters);
+  searchInput.addEventListener('input', () => applyFilters(true));
+  statusFilter.addEventListener('change', () => applyFilters(true));
   refreshBtn.addEventListener('click', loadLeads);
+  pageSizeSel.addEventListener('change', () => {
+    const v = pageSizeSel.value;
+    pageSize = v === 'all' ? 'all' : parseInt(v, 10);
+    applyFilters(true);
+  });
 
   loadLeads();
 </script>
