@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Leads Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #262b36;
+    --text: #e6e8ec;
+    --muted: #8a90a2;
+    --accent: #5b8cff;
+    --good: #3ddc97;
+    --warn: #ffb454;
+    --bad: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
+
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .toolbar input, .toolbar select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .toolbar input { flex: 1; min-width: 200px; }
+  button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { opacity: .9; }
+
+  .status { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .status.error { color: var(--bad); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  thead th {
+    text-align: left;
+    padding: 10px 12px;
+    background: #1d212b;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tbody tr:hover { background: #1c202a; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .badge.lead { background: #2b3550; color: #9db4ff; }
+  .badge.qualified { background: #1e3a2f; color: var(--good); }
+  .badge.contacted { background: #3a3120; color: var(--warn); }
+  .badge.disqualified { background: #3a2222; color: var(--bad); }
+  .badge.default { background: #2a2e38; color: var(--muted); }
+
+  .score {
+    font-weight: 700;
+  }
+  .score.high { color: var(--good); }
+  .score.mid { color: var(--warn); }
+  .score.low { color: var(--muted); }
+
+  .tags span {
+    display: inline-block;
+    background: #232838;
+    color: #a9b3cc;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin: 2px 4px 0 0;
+    font-size: 11px;
+  }
+
+  .muted { color: var(--muted); }
+  .empty { text-align: center; padding: 40px; color: var(--muted); }
+
+  a.link { color: var(--accent); text-decoration: none; }
+  a.link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Leads</h1>
+<div class="sub">Live data from your Neon <code>leads</code> table</div>
+
+<div class="toolbar">
+  <input id="search" type="text" placeholder="Search name, company, email, city..." />
+  <select id="statusFilter">
+    <option value="">All statuses</option>
+  </select>
+  <button id="refreshBtn">Refresh</button>
+</div>
+
+<div id="status" class="status">Connecting...</div>
+
+<table>
+  <thead>
+    <tr>
+      <th data-key="name">Name</th>
+      <th data-key="company_name">Company</th>
+      <th data-key="email">Email</th>
+      <th data-key="phone">Phone</th>
+      <th data-key="industry">Industry</th>
+      <th data-key="city">Location</th>
+      <th data-key="lead_score">Score</th>
+      <th data-key="status">Status</th>
+      <th data-key="tags">Tags</th>
+      <th data-key="created_at">Created</th>
+    </tr>
+  </thead>
+  <tbody id="tbody">
+    <tr><td colspan="10" class="empty">Loading...</td></tr>
+  </tbody>
+</table>
+
+<!--
+  =========================================================================
+  SECURITY WARNING
+  =========================================================================
+  The connection string below is embedded directly in client-side JS.
+  Anyone who views this page's source (or opens dev tools) can read it
+  and gain full access to your Neon database with whatever privileges
+  that role has.
+
+  Strongly recommended: create a READ-ONLY role in Neon and use its
+  connection string here instead of an owner/admin one, e.g.:
+
+    CREATE ROLE leads_reader WITH LOGIN PASSWORD 'choose-a-strong-password';
+    GRANT USAGE ON SCHEMA public TO leads_reader;
+    GRANT SELECT ON public.leads TO leads_reader;
+
+  Then use that role's connection string below. Also avoid hosting this
+  file anywhere public - keep it local or behind auth.
+  =========================================================================
+-->
+<script type="module">
+  import { neon } from "https://esm.sh/@neondatabase/serverless";
+
+  // Using a READ-ONLY role (leads_reader) — can only SELECT from leads, nothing else.
+  const DATABASE_URL = "postgresql://leads_reader:YourStrongPasswordHere123%21@ep-withered-mountain-aoywifs4-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+
+  const sql = neon(DATABASE_URL);
+
+  const tbody = document.getElementById('tbody');
+  const statusEl = document.getElementById('status');
+  const searchInput = document.getElementById('search');
+  const statusFilter = document.getElementById('statusFilter');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  let allLeads = [];
+  let sortKey = 'created_at';
+  let sortDir = 'desc';
+
+  function setStatus(msg, isError = false) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (isError ? ' error' : '');
+  }
+
+  function badgeClass(status) {
+    const known = ['lead', 'qualified', 'contacted', 'disqualified'];
+    return known.includes((status || '').toLowerCase()) ? status.toLowerCase() : 'default';
+  }
+
+  function scoreClass(score) {
+    if (score >= 70) return 'high';
+    if (score >= 40) return 'mid';
+    return 'low';
+  }
+
+  function fmtDate(d) {
+    if (!d) return '<span class="muted">—</span>';
+    const date = new Date(d);
+    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function render(rows) {
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">No leads found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${esc(r.name) || '<span class="muted">—</span>'}</td>
+        <td>${esc(r.company_name) || '<span class="muted">—</span>'}</td>
+        <td>${r.email ? `<a class="link" href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : '<span class="muted">—</span>'}</td>
+        <td>${esc(r.phone) || '<span class="muted">—</span>'}</td>
+        <td>${esc(r.industry) || '<span class="muted">—</span>'}</td>
+        <td>${[r.city, r.country].filter(Boolean).map(esc).join(', ') || '<span class="muted">—</span>'}</td>
+        <td><span class="score ${scoreClass(r.lead_score || 0)}">${r.lead_score ?? 0}</span></td>
+        <td><span class="badge ${badgeClass(r.status)}">${esc(r.status) || 'lead'}</span></td>
+        <td class="tags">${(r.tags || []).map(t => `<span>${esc(t)}</span>`).join('') || '<span class="muted">—</span>'}</td>
+        <td>${fmtDate(r.created_at)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function applyFilters() {
+    const q = searchInput.value.trim().toLowerCase();
+    const statusVal = statusFilter.value;
+
+    let rows = allLeads.filter(r => {
+      const matchesQuery = !q || [r.name, r.company_name, r.email, r.city, r.industry]
+        .filter(Boolean)
+        .some(f => String(f).toLowerCase().includes(q));
+      const matchesStatus = !statusVal || r.status === statusVal;
+      return matchesQuery && matchesStatus;
+    });
+
+    rows.sort((a, b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (av === null || av === undefined) av = '';
+      if (bv === null || bv === undefined) bv = '';
+      if (typeof av === 'string') av = av.toLowerCase();
+      if (typeof bv === 'string') bv = bv.toLowerCase();
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    render(rows);
+    setStatus(`Showing ${rows.length} of ${allLeads.length} leads`);
+  }
+
+  async function loadLeads() {
+    setStatus('Loading leads...');
+    tbody.innerHTML = '<tr><td colspan="10" class="empty">Loading...</td></tr>';
+    try {
+      const rows = await sql`
+        SELECT id, name, company_name, email, phone, industry, city, country,
+               lead_score, status, tags, created_at
+        FROM leads
+        ORDER BY created_at DESC
+        LIMIT 500
+      `;
+      allLeads = rows;
+
+      // Populate status filter options dynamically
+      const statuses = [...new Set(rows.map(r => r.status).filter(Boolean))];
+      statusFilter.innerHTML = '<option value="">All statuses</option>' +
+        statuses.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+      applyFilters();
+    } catch (err) {
+      console.error(err);
+      setStatus('Failed to load leads: ' + err.message, true);
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">Error loading data — check console</td></tr>';
+    }
+  }
+
+  document.querySelectorAll('thead th').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (sortKey === key) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortKey = key;
+        sortDir = 'asc';
+      }
+      applyFilters();
+    });
+  });
+
+  searchInput.addEventListener('input', applyFilters);
+  statusFilter.addEventListener('change', applyFilters);
+  refreshBtn.addEventListener('click', loadLeads);
+
+  loadLeads();
+</script>
+
+</body>
+</html>
